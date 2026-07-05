@@ -2,7 +2,7 @@
 
 URDF model, Gazebo simulation, and navigation stack for the [oomwoo](https://github.com/makerspet/oomwoo) open-source robot vacuum.
 
-This is the self-hosted version of the `urdf-gazebo-sim` contribution by @alvarosamudio.
+This is the self-hosted version of the `urdf-gazebo-sim` contribution by @alvarosamudio. Built against the [OOMWOO ROS2 Software Interfaces](https://github.com/makerspet/oomwoo/blob/main/docs/SOFTWARE_INTERFACES.md) contract.
 
 ## Package Structure
 
@@ -156,7 +156,8 @@ gz sim -s -r --headless-rendering <world.sdf>
 | SDF `box size="..."` attribute syntax deprecated | Changed to nested `<box><size>...</size></box>` in all worlds |
 | `fuel.gazebosim.org` remote model references | Replaced with self-contained light + ground_plane models |
 | GPU LiDAR requires hardware GPU | Switched to `type="lidar"` (CpuLidar) with physics raycasting |
-| Bumper bridge `Contact` → `Contacts` type mismatch | Fixed ROS msg type in `gz_bridge.yaml` |
+| Bumper bridge `Contact` → `Contacts` type mismatch | Fixed ROS msg type in `gz_bridge.yaml` and `bump_recovery.py` |
+| `bump_recovery.py` used `msg.collisions` on `Contact` (singular) | Switched to `Contacts` subscription and `msg.contacts` field; ground-plane detection uses robust `"ground_plane" in name.split("::")` pattern |
 | SDF 1.8 gravity deprecation warning | Moved `gravity` to `<world>` level in all SDFs |
 
 ## Dependencies

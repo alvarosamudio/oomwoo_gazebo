@@ -31,11 +31,21 @@ class BumpRecovery(Node):
             self._recover("right")
 
     def _is_real_contact(self, msg):
-        for c in msg.contacts:
-            if (not c.collision1.name.startswith("ground_plane")
-                    and not c.collision2.name.startswith("ground_plane")):
+        for contact in msg.contacts:
+            if not self._is_ground_contact(contact):
                 return True
         return False
+
+    @staticmethod
+    def _is_ground_contact(contact):
+        return (
+            BumpRecovery._is_ground_entity(contact.collision1.name)
+            or BumpRecovery._is_ground_entity(contact.collision2.name)
+        )
+
+    @staticmethod
+    def _is_ground_entity(name):
+        return "ground_plane" in name.split("::")
 
     def _recover(self, side):
         self._recovering = True
