@@ -1,4 +1,14 @@
 #!/usr/bin/env python3
+"""
+Simple bump-triggered recovery node.
+
+Deprecated in favor of oomwoo_recovery_safety (by xbattlax), which provides
+a full state machine with ladder escalation, safety pauses, JSON status,
+and Nav2 integration. See:
+  https://github.com/makerspet/oomwoo/tree/main/contributions/recovery-safety/xbattlax
+
+This node is kept as a lightweight fallback for basic bumper testing.
+"""
 import rclpy
 from rclpy.node import Node
 from ros_gz_interfaces.msg import Contacts
