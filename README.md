@@ -1,25 +1,67 @@
 # oomwoo_gazebo
 
-URDF model, Gazebo simulation, and navigation stack for the [oomwoo](https://github.com/makerspet/oomwoo) open-source robot vacuum.
+[![ROS2](https://img.shields.io/badge/ROS2-Jazzy-blue)](https://docs.ros.org/en/jazzy/)
+[![Gazebo](https://img.shields.io/badge/Gazebo-Harmonic-orange)](https://gazebosim.org)
+[![License](https://img.shields.io/badge/License-Apache--2.0-green)](LICENSE)
 
-This is the self-hosted version of the `urdf-gazebo-sim` contribution by [@alvarosamudio](https://github.com/alvarosamudio). Built against the [OOMWOO ROS2 Software Interfaces](https://github.com/makerspet/oomwoo/blob/main/docs/SOFTWARE_INTERFACES.md) contract.
+URDF model, Gazebo simulation worlds, and Nav2/SLAM configuration for the [OOMWOO](https://github.com/makerspet/oomwoo) open-source robot vacuum.
 
-## Credits
+This is the self-hosted version of the `urdf-gazebo-sim` contribution by [@alvarosamudio](https://github.com/alvarosamudio), built against the [ROS2 Software Interfaces](https://github.com/makerspet/oomwoo/blob/main/docs/SOFTWARE_INTERFACES.md) contract.
 
-This repo incorporates work from several contributors:
+---
 
-- **@xbattlax** — [PR #17](https://github.com/makerspet/oomwoo/pull/17) fix for `bump_recovery.py` (subscribing to `Contacts` + `msg.contacts` with robust `"ground_plane" in name.split("::")` ground-plane detection). Also author of [`oomwoo_recovery_safety`](oomwoo_recovery_safety/), a full recovery state machine with ladder escalation, safety pauses, JSON status, and Nav2 integration hooks. See [recovery-safety RFC](https://github.com/makerspet/oomwoo/tree/main/contributions/recovery-safety/xbattlax) for details.
+## Table of Contents
 
-`bump_recovery.py` is now deprecated in favor of `oomwoo_recovery_safety` for production use.
+- [Quick Start](#quick-start)
+- [Packages](#packages)
+- [Features](#features)
+  - [Simulation Worlds](#simulation-worlds)
+  - [Bumper & Recovery](#bumper--recovery)
+  - [SLAM](#slam)
+  - [Navigation](#navigation)
+- [Robot Specs](#robot-specs)
+- [Build Requirements](#build-requirements)
+- [Fixes Applied](#fixes-applied)
+- [Dependencies](#dependencies)
+- [Credits](#credits)
+- [License](#license)
+
+---
+
+## Quick Start
+
+```bash
+source /opt/ros/jazzy/setup.bash
+
+# Build
+colcon build --packages-select oomwoo_gazebo
+source install/setup.bash
+
+# Launch simulation (default: living_room.sdf)
+ros2 launch oomwoo_gazebo sim.launch.py
+
+# In another terminal, drive around
+ros2 launch oomwoo_gazebo teleop.launch.py
+```
+
+Use a different world:
+
+```bash
+ros2 launch oomwoo_gazebo sim.launch.py world:=/path/to/kitchen.sdf
+```
+
+---
 
 ## Packages
 
-```
-oomwoo_gazebo/              # URDF, config, worlds, launch files, bump_recovery
-oomwoo_recovery_safety/     # Recovery state machine by xbattlax
-```
+This repo contains two ROS2 packages:
 
-### oomwoo_gazebo structure
+| Package | Type | Description |
+|---|---|---|
+| `oomwoo_gazebo` | `ament_cmake` | URDF, config, worlds, launch files, legacy bump_recovery |
+| `oomwoo_recovery_safety` | `ament_python` | Recovery state machine (by [@xbattlax](https://github.com/xbattlax)) |
+
+### oomwoo_gazebo layout
 
 ```
 oomwoo_gazebo/
@@ -31,175 +73,194 @@ oomwoo_gazebo/
 │   └── plugins.xacro      # Gazebo plugins (diff-drive, lidar, bumpers)
 ├── config/                 # ROS2 + Gazebo configuration
 │   ├── gz_bridge.yaml     # Topic bridges between ROS2 and Gazebo
-│   ├── navigation.yaml    # Nav2 stack parameters (controller, planner, costmaps, collision_monitor, docking)
+│   ├── navigation.yaml    # Nav2 stack parameters
 │   ├── slam_toolbox.yaml  # SLAM Toolbox configuration
 │   ├── map.yaml           # Nav2 placeholder map metadata
 │   └── map.pgm            # Nav2 placeholder map image
 ├── worlds/                 # Gazebo simulation worlds
-│   ├── empty.sdf
-│   ├── living_room.sdf
-│   ├── kitchen.sdf
-│   ├── multi_room.sdf
-│   └── narrow_passage.sdf
+│   ├── empty.sdf          # Bare ground plane
+│   ├── living_room.sdf    # Sofa, table, walls
+│   ├── kitchen.sdf        # Cabinets, island, appliances
+│   ├── multi_room.sdf     # Connected rooms with doorways
+│   └── narrow_passage.sdf # Corridor with bottleneck
 ├── launch/                 # Launch files
-│   ├── sim.launch.py              # Full simulation (Gazebo + bridge + robot + RViz)
-│   ├── bumper_test.launch.py      # Bumper contact testing in empty world
-│   ├── bump_recovery.launch.py    # Auto-recovery node (deprecated, use oomwoo_recovery_safety)
-│   ├── teleop.launch.py           # Keyboard teleop
-│   ├── slam.launch.py             # SLAM Toolbox
-│   └── nav2.launch.py             # Nav2 navigation stack
+│   ├── sim.launch.py      # Full simulation (Gazebo + bridge + robot + RViz)
+│   ├── bumper_test.launch.py
+│   ├── bump_recovery.launch.py  # Deprecated — use oomwoo_recovery_safety
+│   ├── teleop.launch.py
+│   ├── slam.launch.py
+│   └── nav2.launch.py
 ├── rviz/
 │   └── oomwoo.rviz        # RViz preset with robot, laser, map, plans, TF
 ├── oomwoo_gazebo/
 │   ├── __init__.py
-│   └── bump_recovery.py   # Bump-triggered backup + rotate (deprecated)
+│   └── bump_recovery.py   # Deprecated — use oomwoo_recovery_safety
 ├── CMakeLists.txt
 └── package.xml
 ```
 
-## Quick Start
+---
 
-```bash
-# Source your ROS2 + Gazebo workspace
-source /opt/ros/jazzy/setup.bash
+## Features
 
-# Build
-colcon build --packages-select oomwoo_gazebo
+### Simulation Worlds
 
-# Launch simulation (default: living_room.sdf)
-ros2 launch oomwoo_gazebo sim.launch.py
+| World | Description |
+|---|---|
+| `empty.sdf` | Bare ground plane — ideal for bumper testing |
+| `living_room.sdf` | Sofa, table, plant, obstacle box, walls |
+| `kitchen.sdf` | Central island, dining table, chairs |
+| `multi_room.sdf` | Two connected rooms with dividing wall |
+| `narrow_passage.sdf` | Corridor with bottleneck obstacle |
 
-# Use a different world:
-ros2 launch oomwoo_gazebo sim.launch.py world:=/path/to/kitchen.sdf
+All worlds use DART physics with Bullet collision detector, CpuLidar, and contact plugins.
 
-# In another terminal, drive around
-ros2 launch oomwoo_gazebo teleop.launch.py
-```
+### Bumper & Recovery
 
-> **Note:** The LiDAR uses `type="lidar"` (CpuLidar) — physics-based raycasting
-> that requires **no GPU**. It uses the `gz-sim-cpu-lidar-system` plugin with
-> DART physics + Bullet collision detector. This requires building the Gazebo
-> libraries from source with CpuLidar support (PRs merged May 2026).
-> See [Build Requirements](#build-requirements) below.
+The front bumper is split into left and right segments, each publishing contact events via Gazebo contact sensors:
 
-## Bumper
+| Sensor | Topic | Collision |
+|---|---|---|
+| Left bumper | `/bumper_left` | `bumper_left_collision` |
+| Right bumper | `/bumper_right` | `bumper_right_collision` |
 
-The front bumper is split into left and right segments, each with its own Gazebo contact sensor:
+#### Recommended: oomwoo_recovery_safety
 
-| Sensor          | Topic           | Collision             |
-|-----------------|-----------------|-----------------------|
-| Left bumper     | `/bumper_left`  | `bumper_left_collision` |
-| Right bumper    | `/bumper_right` | `bumper_right_collision` |
+The [oomwoo_recovery_safety](oomwoo_recovery_safety/) package by [@xbattlax](https://github.com/xbattlax) provides a production-ready recovery state machine:
 
-### Recovery (recommended): oomwoo_recovery_safety
-
-The [oomwoo_recovery_safety](oomwoo_recovery_safety/) package (by [@xbattlax](https://github.com/xbattlax)) provides a full recovery state machine:
-- Bounded recovery ladders (backup → rotate → wiggle → clear_costmap → pause)
-- Immediate safe stop for e-stop, cliff, wheel-drop, pickup
-- JSON status on `/oomwoo/status` for integration with Home Assistant
+- Bounded recovery ladders: back up → rotate away → wiggle free → clear costmap → pause
+- Immediate safe stop for e-stop, cliff, wheel-drop, and pickup events
+- JSON status on `/oomwoo/status` (structured for Home Assistant integration)
 - Nav2 behavior-server hooks via `/oomwoo/recovery/behavior_result`
-- Unit tests for guaranteed termination and safety responses
+- Unit-tested for guaranteed termination and safety responses
 
 ```bash
-# Build both packages
 colcon build --packages-select oomwoo_gazebo oomwoo_recovery_safety
 source install/setup.bash
-
-# Launch recovery safety node
 ros2 launch oomwoo_recovery_safety recovery_safety.launch.py
 ```
 
-### Fallback: bump_recovery.py
+#### Legacy: bump_recovery.py
 
-A lightweight one-shot recovery node — backs up while rotating away from the collision, stops after 1.5 s.
-
-**Deprecated.** For basic bumper testing:
+A lightweight one-shot recovery node — backs up while rotating away from the collision, stops after 1.5 s. **Deprecated** in favor of `oomwoo_recovery_safety`.
 
 ```bash
 ros2 launch oomwoo_gazebo bumper_test.launch.py
-# In another terminal:
-ros2 topic echo /bumper_left
-ros2 topic echo /bumper_right
 ros2 run oomwoo_gazebo bump_recovery.py
 ```
 
-## SLAM
+### SLAM
 
 ```bash
 ros2 launch oomwoo_gazebo slam.launch.py
 ```
 
-## Navigation
+Launches `async_slam_toolbox_node` with `use_sim_time` and configured slam_toolbox parameters.
 
-Provide a pre-built map or launch SLAM first to generate one, then:
+### Navigation
 
 ```bash
 ros2 launch oomwoo_gazebo nav2.launch.py map:=/path/to/your/map.yaml
 ```
 
-The Nav2 bringup includes: controller, planner, smoother, behavior server, BT navigator,
-velocity smoother, collision monitor, docking server, waypoint follower, and route server.
+The Nav2 bringup includes:
 
-## Worlds
+| Component | Description |
+|---|---|
+| Planner server | Navfn global planner |
+| Controller server | DWB local planner with custom critic weights |
+| Behavior server | Spin, backup, drive_on_heading, wait |
+| BT navigator | Behavior tree with replanning and recovery |
+| Collision monitor | Polygon stop zone + scan observation |
+| Docking server | SimpleChargingDock plugin |
+| Velocity smoother | Acceleration-limited commands |
+| Waypoint follower | Sequential goal execution |
+| Route server | Multi-segment route planning |
 
-| World             | Description                    |
-|-------------------|--------------------------------|
-| `empty.sdf`       | Bare ground plane              |
-| `living_room.sdf` | Sofa, table, walls             |
-| `kitchen.sdf`     | Cabinets, island, appliances   |
-| `multi_room.sdf`  | Connected rooms with doorways  |
-| `narrow_passage.sdf` | Corridor with bottleneck    |
+---
+
+## Robot Specs
+
+| Parameter | Value | Description |
+|---|---|---|
+| base_diameter | 0.33 m | Chassis diameter |
+| wheel_diameter | 0.065 m | Drive wheels diameter |
+| wheel_base | 0.28 m | Distance between drive wheels |
+| lidar_z_offset | 0.075 m | LiDAR height offset |
+| bumper_width | 0.12 m | Each bumper pad width |
+| bumper_height | 0.025 m | Bumper pad height |
+
+---
 
 ## Build Requirements
 
-The CpuLidar sensor requires Gazebo libraries built from source with the latest
-CpuLidar support:
+> **Note:** The LiDAR uses `type="lidar"` (CpuLidar) — physics-based raycasting
+> that requires **no GPU**. It uses the `gz-sim-cpu-lidar-system` plugin with
+> DART physics + Bullet collision detector.
+
+### Option A: Build Gazebo from source (recommended)
+
+CpuLidar support requires Gazebo libraries built from source:
 
 ```bash
-# Clone Gazebo sources
 mkdir -p /gz_ws/src && cd /gz_ws
 vcs import src < collection-harmonic.yaml
 
-# Apply CpuLidar patches (already in main branch since May 2026)
-# gz-sensors: PR #593 — CpuLidarSensor
-# gz-sim:     PR #3343 — CpuLidar system plugin
-# gz-physics: PR #880 — Raycast support
+# gz-sensors     — CpuLidarSensor           (PR #593)
+# gz-sim         — CpuLidar system plugin   (PR #3343)
+# gz-physics     — Raycast support          (PR #880)
 
-# Build
 colcon build --merge-install --packages-up-to gz-sim
 source install/setup.bash
 ```
 
-If you cannot build from source, use the **software rendering workaround** instead:
+### Option B: Software rendering workaround
+
+If you cannot build from source:
+
 ```bash
 export MESA_GL_VERSION_OVERRIDE=3.3
 export LIBGL_ALWAYS_SOFTWARE=1
 gz sim -s -r --headless-rendering <world.sdf>
 ```
 
+---
+
 ## Fixes Applied
 
 | Issue | Fix |
-|-------|-----|
-| `param_bridge` executable not found | Renamed to `parameter_bridge` in both launch files |
+|---|---|
+| `param_bridge` executable not found | Renamed to `parameter_bridge` in launch files |
 | `/world/<name>/create` service missing | Added `gz-sim-user-commands-system` plugin to all SDF worlds |
-| Robot couldn't be spawned without `-world` flag | Added `-world living_room` argument to `create` call |
-| `collision_monitor` crashed on startup | Added `collision_monitor` section with proper polygon config |
-| `docking_server` needed charging dock plugins | Added `docking_server` section with `SimpleChargingDock` |
+| Robot couldn't spawn without `-world` flag | Added `-world living_room` argument to `create` call |
+| `collision_monitor` crashed on startup | Added `collision_monitor` with proper polygon config |
+| `docking_server` needed charging dock plugins | Added `SimpleChargingDock` configuration |
 | SDF `box size="..."` attribute syntax deprecated | Changed to nested `<box><size>...</size></box>` in all worlds |
 | `fuel.gazebosim.org` remote model references | Replaced with self-contained light + ground_plane models |
-| GPU LiDAR requires hardware GPU | Switched to `type="lidar"` (CpuLidar) with physics raycasting |
-| Bumper bridge `Contact` → `Contacts` type mismatch | Fixed ROS msg type in `gz_bridge.yaml` and `bump_recovery.py` (by [@xbattlax](https://github.com/xbattlax), PR #17) |
+| GPU LiDAR requires hardware GPU | Switched to `type="lidar"` (CpuLidar) — no GPU needed |
+| Bumper bridge `Contact` → `Contacts` type mismatch | Fixed ROS msg type in `gz_bridge.yaml` and `bump_recovery.py` (by [@xbattlax](https://github.com/xbattlax), [PR #17](https://github.com/makerspet/oomwoo/pull/17)) |
 | `bump_recovery.py` used `msg.collisions` on `Contact` (singular) | Switched to `Contacts` subscription and `msg.contacts` field; ground-plane detection uses robust `"ground_plane" in name.split("::")` pattern (by [@xbattlax](https://github.com/xbattlax)) |
-| SDF 1.8 gravity deprecation warning | Moved `gravity` to `<world>` level in all SDFs |
+| SDF 1.8 gravity deprecation warning | Moved `gravity` from `<physics>` to `<world>` level in all SDFs |
+
+---
 
 ## Dependencies
 
-- ROS2 Jazzy
-- Gazebo Harmonic (gz-sim9, with CpuLidar support from main branch)
-- DART physics with Bullet collision detector
-- `nav2_bringup`, `slam_toolbox`, `ros_gz_sim`, `ros_gz_bridge`, `teleop_twist_keyboard`
-- `oomwoo_recovery_safety` — optional, recommended for production recovery
+- **ROS2** Jazzy (also compatible with Humble)
+- **Gazebo** Harmonic (gz-sim9, with CpuLidar support from main branch)
+- **Physics** DART with Bullet collision detector
+- **Packages:** `nav2_bringup`, `slam_toolbox`, `ros_gz_sim`, `ros_gz_bridge`, `teleop_twist_keyboard`
+- **Optional:** `oomwoo_recovery_safety` — recommended for production recovery
+
+---
+
+## Credits
+
+- [@alvarosamudio](https://github.com/alvarosamudio) — URDF model, Gazebo worlds, launch files, configuration, original bump_recovery node
+- [@xbattlax](https://github.com/xbattlax) — [PR #17](https://github.com/makerspet/oomwoo/pull/17) bug fix for bump_recovery (`Contacts` + `msg.contacts` + `"ground_plane" in name.split("::")`); author of [`oomwoo_recovery_safety`](oomwoo_recovery_safety/), a full recovery state machine with ladder escalation, safety pauses, JSON status, and Nav2 integration hooks. See the [recovery-safety RFC](https://github.com/makerspet/oomwoo/tree/main/contributions/recovery-safety/xbattlax) for details.
+- [makerspet](https://github.com/makerspet) — OOMWOO project maintainer; [ROS2 Software Interfaces](https://github.com/makerspet/oomwoo/blob/main/docs/SOFTWARE_INTERFACES.md) contract
+
+---
 
 ## License
 
