@@ -16,8 +16,9 @@
       name="gz::sim::systems::Physics">
     </plugin>
     <plugin
-      filename="gz-sim-cpu-lidar-system"
-      name="gz::sim::systems::CpuLidar">
+      filename="gz-sim-sensors-system"
+      name="gz::sim::systems::Sensors">
+      <render_engine>ogre2</render_engine>
     </plugin>
     <plugin
       filename="gz-sim-contact-system"
