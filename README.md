@@ -113,7 +113,9 @@ oomwoo_gazebo/
 | `multi_room.sdf` | Two connected rooms with dividing wall |
 | `narrow_passage.sdf` | Corridor with bottleneck obstacle |
 
-All worlds use DART physics with Bullet collision detector, CpuLidar, and contact plugins.
+All worlds use DART physics with Bullet collision detection, the Gazebo Sensors
+system plugin for `gpu_lidar`, and contact plugins. The GPU LiDAR can run with
+Mesa software rendering in headless Docker environments.
 
 ### Bumper & Recovery
 
@@ -194,35 +196,45 @@ The Nav2 bringup includes:
 
 ## Build Requirements
 
-> **Note:** The LiDAR uses `type="lidar"` (CpuLidar) — physics-based raycasting
-> that requires **no GPU**. It uses the `gz-sim-cpu-lidar-system` plugin with
-> DART physics + Bullet collision detector.
+The supported Docker path uses Gazebo Harmonic's binary packages and the
+standard `gz-sim-sensors-system` plugin. The robot URDF uses
+`type="gpu_lidar"`; no custom Gazebo build is required.
 
-### Option A: Build Gazebo from source (recommended)
+### Docker (recommended)
 
-CpuLidar support requires Gazebo libraries built from source:
+The project image contains ROS 2 Jazzy, Gazebo Harmonic, RViz, `colcon`, and
+the ROS-Gazebo bridge:
 
 ```bash
-mkdir -p /gz_ws/src && cd /gz_ws
-vcs import src < collection-harmonic.yaml
+docker pull makerspet/oomwoo:jazzy-dev
+docker run --rm -it \
+  -v "$PWD":/workspace/src/oomwoo_gazebo \
+  makerspet/oomwoo:jazzy-dev bash
+```
 
-# gz-sensors     — CpuLidarSensor           (PR #593)
-# gz-sim         — CpuLidar system plugin   (PR #3343)
-# gz-physics     — Raycast support          (PR #880)
+Inside the container:
 
-colcon build --merge-install --packages-up-to gz-sim
+```bash
+source /opt/ros/jazzy/setup.bash
+cd /workspace
+colcon build --symlink-install
 source install/setup.bash
 ```
 
-### Option B: Software rendering workaround
+### Headless / software rendering
 
-If you cannot build from source:
+For CI, SSH, or hosts without a usable GPU, set Mesa software rendering and
+use Gazebo's server-only mode:
 
 ```bash
 export MESA_GL_VERSION_OVERRIDE=3.3
 export LIBGL_ALWAYS_SOFTWARE=1
-gz sim -s -r --headless-rendering <world.sdf>
+gz sim -s -r --headless-rendering \
+  install/oomwoo_gazebo/share/oomwoo_gazebo/worlds/living_room.sdf
 ```
+
+The `gz-sim-sensors-system` world plugin must remain enabled for GPU LiDAR;
+removing it makes `/scan` exist without publishing samples.
 
 ---
 
@@ -237,7 +249,7 @@ gz sim -s -r --headless-rendering <world.sdf>
 | `docking_server` needed charging dock plugins | Added `SimpleChargingDock` configuration |
 | SDF `box size="..."` attribute syntax deprecated | Changed to nested `<box><size>...</size></box>` in all worlds |
 | `fuel.gazebosim.org` remote model references | Replaced with self-contained light + ground_plane models |
-| GPU LiDAR requires hardware GPU | Switched to `type="lidar"` (CpuLidar) — no GPU needed |
+| CpuLidar unavailable in the Jazzy Harmonic image | Switched worlds to `gz-sim-sensors-system` and `type="gpu_lidar"`; headless runs use Mesa software rendering |
 | Bumper bridge `Contact` → `Contacts` type mismatch | Fixed ROS msg type in `gz_bridge.yaml` and `bump_recovery.py` (by [@xbattlax](https://github.com/xbattlax), [PR #17](https://github.com/makerspet/oomwoo/pull/17)) |
 | `bump_recovery.py` used `msg.collisions` on `Contact` (singular) | Switched to `Contacts` subscription and `msg.contacts` field; ground-plane detection uses robust `"ground_plane" in name.split("::")` pattern (by [@xbattlax](https://github.com/xbattlax)) |
 | SDF 1.8 gravity deprecation warning | Moved `gravity` from `<physics>` to `<world>` level in all SDFs |
@@ -247,7 +259,7 @@ gz sim -s -r --headless-rendering <world.sdf>
 ## Dependencies
 
 - **ROS2** Jazzy (also compatible with Humble)
-- **Gazebo** Harmonic (gz-sim9, with CpuLidar support from main branch)
+- **Gazebo** Harmonic (gz-sim8, with `gz-sim-sensors-system`)
 - **Physics** DART with Bullet collision detector
 - **Packages:** `nav2_bringup`, `slam_toolbox`, `ros_gz_sim`, `ros_gz_bridge`, `teleop_twist_keyboard`
 - **Optional:** `oomwoo_recovery_safety` — recommended for production recovery

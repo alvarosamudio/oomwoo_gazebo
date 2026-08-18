@@ -27,7 +27,7 @@
   </gazebo>
 
   <gazebo reference="base_scan">
-    <sensor name="laser_scan_sensor" type="lidar">
+    <sensor name="laser_scan_sensor" type="gpu_lidar">
       <pose relative_to="base_scan">0 0 0 0 0 0</pose>
       <update_rate>10</update_rate>
       <topic>scan</topic>
