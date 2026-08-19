@@ -20,7 +20,9 @@ class RecoverySafetyNode(Node):
         self._controller = RecoveryController()
         self._active_deadline: float | None = None
 
-        self._cmd_pub = self.create_publisher(Twist, "cmd_vel", 10)
+        # Motion goes through cmd_vel_priority so the cmd_vel_mux (or any
+        # other arbitration layer) can gate it against Nav2/teleop commands.
+        self._cmd_pub = self.create_publisher(Twist, "cmd_vel_priority", 10)
         self._status_pub = self.create_publisher(String, "oomwoo/status", 10)
         self._command_pub = self.create_publisher(String, "oomwoo/recovery/command", 10)
 

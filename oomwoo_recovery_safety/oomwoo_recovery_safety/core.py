@@ -138,6 +138,10 @@ class RecoveryController:
                 recoverable=False,
             )
 
+        if self._state == ControllerState.RECOVERED:
+            self._state = ControllerState.IDLE
+            self._situation = None
+
         if self._state == ControllerState.RECOVERING:
             status = self._make_status(
                 "RECOVERY_ALREADY_ACTIVE",

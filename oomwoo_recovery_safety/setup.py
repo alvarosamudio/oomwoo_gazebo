@@ -22,6 +22,7 @@ setup(
     entry_points={
         "console_scripts": [
             "recovery_safety_node = oomwoo_recovery_safety.recovery_node:main",
+            "cmd_vel_mux = oomwoo_recovery_safety.cmd_vel_mux:main",
         ],
     },
 )

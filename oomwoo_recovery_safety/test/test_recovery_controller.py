@@ -42,6 +42,19 @@ def test_success_stops_ladder():
     assert controller.last_status.reason_code == "RECOVERED"
 
 
+def test_new_recovery_after_success_returns_to_idle_and_starts():
+    controller = RecoveryController()
+    controller.trigger(Situation.BUMPER_LEFT)
+    controller.step_succeeded()
+    assert controller.state == ControllerState.RECOVERED
+
+    decision = controller.trigger(Situation.BUMPER_RIGHT)
+
+    assert decision.kind == DecisionKind.START_STEP
+    assert controller.state == ControllerState.RECOVERING
+    assert decision.step.name == "back_up"
+
+
 @pytest.mark.parametrize(
     ("situation", "reason"),
     [

@@ -25,6 +25,10 @@
   <exec_depend>sensor_msgs</exec_depend>
   <exec_depend>teleop_twist_keyboard</exec_depend>
 
+  <exec_depend>nav2_bringup</exec_depend>
+  <exec_depend>nav2_map_server</exec_depend>
+  <exec_depend>slam_toolbox</exec_depend>
+
   <export>
     <build_type>ament_cmake</build_type>
     <gazebo_ros gazebo_model_path="${prefix}/sdf"/>
