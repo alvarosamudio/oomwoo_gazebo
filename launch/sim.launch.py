@@ -1,9 +1,9 @@
 import os
 from ament_index_python.packages import get_package_share_directory
 from launch import LaunchDescription
-from launch.actions import DeclareLaunchArgument, ExecuteProcess, TimerAction
+from launch.actions import DeclareLaunchArgument, ExecuteProcess
 from launch.conditions import IfCondition
-from launch.substitutions import LaunchConfiguration, Command
+from launch.substitutions import Command, LaunchConfiguration
 from launch_ros.actions import Node
 
 
@@ -31,7 +31,8 @@ def generate_launch_description():
     bridge = Node(
         package="ros_gz_bridge",
         executable="parameter_bridge",
-        parameters=[os.path.join(pkg, "config", "gz_bridge.yaml")],
+        parameters=[os.path.join(pkg, "config", "gz_bridge.yaml"),
+                    {"use_sim_time": True}],
         output="screen",
     )
 
@@ -41,20 +42,23 @@ def generate_launch_description():
         parameters=[{
             "robot_description": Command(
                 ["xacro ", os.path.join(pkg, "urdf", "robot.urdf.xacro")]
-            )
+            ),
+            "use_sim_time": True,
         }],
     )
 
-    spawn_entity = TimerAction(
-        period=2.0,
-        actions=[
-            Node(
-                package="ros_gz_sim",
-                executable="create",
-                arguments=["-name", "oomwoo", "-topic", "robot_description"],
-                output="screen",
-            )
+    # `create` retries internally until the world service is up, but exits
+    # non-zero if robot_description is not published yet. Retry the whole
+    # spawn so slow machines / headless rendering do not lose the robot.
+    spawn_entity = ExecuteProcess(
+        cmd=[
+            "bash", "-c",
+            "for i in $(seq 1 30); do "
+            "ros2 run ros_gz_sim create -name oomwoo -topic robot_description "
+            "-x 0 -y 0 -Y 0 && exit 0; "
+            "sleep 1; done; exit 1",
         ],
+        output="screen",
     )
 
     rviz_node = Node(
