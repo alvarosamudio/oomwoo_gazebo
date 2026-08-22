@@ -113,7 +113,7 @@ oomwoo_gazebo/
 | `multi_room.sdf` | Two connected rooms with dividing wall |
 | `narrow_passage.sdf` | Corridor with bottleneck obstacle |
 
-All worlds use DART physics with Bullet collision detection, the Gazebo Sensors
+All worlds use DART physics (FCL collision detection), the Gazebo Sensors
 system plugin for `gpu_lidar`, and contact plugins. The GPU LiDAR can run with
 Mesa software rendering in headless Docker environments.
 
@@ -142,6 +142,24 @@ source install/setup.bash
 ros2 launch oomwoo_recovery_safety recovery_safety.launch.py
 ```
 
+`recovery_safety.launch.py` also starts `cmd_vel_mux`, the `/cmd_vel`
+arbitration point required by the [SOFTWARE_INTERFACES.md](https://github.com/makerspet/oomwoo/blob/main/docs/SOFTWARE_INTERFACES.md)
+contract. Priority sources (recovery/safety) publish to `cmd_vel_priority`;
+Nav2 and teleop publish to `cmd_vel_nav`; the mux forwards the highest-priority
+fresh source and publishes zero when everything is stale. With the mux running,
+start teleop with `topic:=cmd_vel_nav`:
+
+```bash
+ros2 launch oomwoo_gazebo teleop.launch.py topic:=cmd_vel_nav
+```
+
+If you also run `nav2.launch.py` (which includes its own mux), start the
+recovery node without a second mux:
+
+```bash
+ros2 launch oomwoo_recovery_safety recovery_safety.launch.py mux:=false
+```
+
 #### Legacy: bump_recovery.py
 
 A lightweight one-shot recovery node — backs up while rotating away from the collision, stops after 1.5 s. **Deprecated** in favor of `oomwoo_recovery_safety`.
@@ -165,19 +183,45 @@ Launches `async_slam_toolbox_node` with `use_sim_time` and configured slam_toolb
 ros2 launch oomwoo_gazebo nav2.launch.py map:=/path/to/your/map.yaml
 ```
 
+Launches Nav2 localization (map server + AMCL), the full navigation stack,
+a map saver server, and the `cmd_vel_mux` arbitration node (from
+`oomwoo_recovery_safety`, so build both packages). Nav2 motion is emitted on
+`cmd_vel_nav` and the mux owns the final `cmd_vel`. With no `map` argument
+the placeholder `config/map.yaml` is used; pass `map:=''` to rely on SLAM's
+`/map` instead.
+
+End-to-end flow (build a map first, then navigate on it):
+
+```bash
+# Terminal 1 — simulation
+ros2 launch oomwoo_gazebo sim.launch.py
+
+# Terminal 2 — drive the robot around to build the map
+ros2 launch oomwoo_gazebo slam.launch.py
+ros2 launch oomwoo_gazebo teleop.launch.py
+
+# Terminal 3 — save the map once it looks good
+ros2 service call /map_saver/save_map nav2_msgs/srv/SaveMap "{}"
+
+# Terminal 4 — navigate on the saved map (AMCL initial pose = map origin)
+ros2 launch oomwoo_gazebo nav2.launch.py map:=/path/to/saved/map.yaml
+```
+
 The Nav2 bringup includes:
 
 | Component | Description |
 |---|---|
+| Map server / AMCL | Localization with the given map; `set_initial_pose` is enabled at the map origin (adjust `initial_pose` in `navigation.yaml` if needed) |
 | Planner server | Navfn global planner |
 | Controller server | DWB local planner with custom critic weights |
 | Behavior server | Spin, backup, drive_on_heading, wait |
 | BT navigator | Behavior tree with replanning and recovery |
 | Collision monitor | Polygon stop zone + scan observation |
+| Velocity smoother | Acceleration-limited commands matched to DWB limits |
 | Docking server | SimpleChargingDock plugin |
-| Velocity smoother | Acceleration-limited commands |
 | Waypoint follower | Sequential goal execution |
 | Route server | Multi-segment route planning |
+| Map saver server | Save maps on demand via `/map_saver/save_map` |
 
 ---
 
@@ -253,6 +297,14 @@ removing it makes `/scan` exist without publishing samples.
 | Bumper bridge `Contact` → `Contacts` type mismatch | Fixed ROS msg type in `gz_bridge.yaml` and `bump_recovery.py` (by [@xbattlax](https://github.com/xbattlax), [PR #17](https://github.com/makerspet/oomwoo/pull/17)) |
 | `bump_recovery.py` used `msg.collisions` on `Contact` (singular) | Switched to `Contacts` subscription and `msg.contacts` field; ground-plane detection uses robust `"ground_plane" in name.split("::")` pattern (by [@xbattlax](https://github.com/xbattlax)) |
 | SDF 1.8 gravity deprecation warning | Moved `gravity` from `<physics>` to `<world>` level in all SDFs |
+| Nav2 launched without map_server/AMCL | `nav2.launch.py` now includes `localization_launch.py` (map server + AMCL), `navigation_launch.py`, and the map saver server |
+| Velocity smoother used nav2_bringup defaults | Added explicit `velocity_smoother` parameters matched to the DWB limits |
+| AMCL started without an initial pose | Enabled `set_initial_pose` at the map origin (`initial_pose` in `navigation.yaml`) |
+| `transform_tolerance: 5.0` accepted stale TF | Lowered to 1.0 in amcl, DWB, global costmap, and BT navigator |
+| `use_sim_time` missing in sim/bumper_test launches | Set `use_sim_time: true` on bridge and robot_state_publisher |
+| Robot spawn could fail on slow/headless machines | Spawn now retries until `robot_description` is available and passes an explicit pose |
+| Contact sensors relied on SDF defaults | Added explicit `<always_on>`/`<update_rate>` to both bumper sensors |
+| Invalid `bullet` collision detector under DART physics | Removed; DART always uses FCL, the option was silently ignored |
 
 ---
 
@@ -260,7 +312,7 @@ removing it makes `/scan` exist without publishing samples.
 
 - **ROS2** Jazzy (also compatible with Humble)
 - **Gazebo** Harmonic (gz-sim8, with `gz-sim-sensors-system`)
-- **Physics** DART with Bullet collision detector
+- **Physics** DART (FCL collision detection)
 - **Packages:** `nav2_bringup`, `slam_toolbox`, `ros_gz_sim`, `ros_gz_bridge`, `teleop_twist_keyboard`
 - **Optional:** `oomwoo_recovery_safety` — recommended for production recovery
 
