@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    pkg = get_package_share_directory("oomwoo_gazebo")
+    pkg = get_package_share_directory("oomwoo_gazebo_harmonic")
 
     world = os.path.join(pkg, "worlds", "empty.sdf")
 
@@ -51,7 +51,7 @@ def generate_launch_description():
     )
 
     bump_recovery = Node(
-        package="oomwoo_gazebo",
+        package="oomwoo_gazebo_harmonic",
         executable="bump_recovery.py",
         name="bump_recovery",
         output="screen",

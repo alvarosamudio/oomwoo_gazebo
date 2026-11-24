@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(oomwoo_gazebo)
+project(oomwoo_gazebo_harmonic)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
   add_compile_options(-Wall -Wextra -Wpedantic)
@@ -13,7 +13,7 @@ install(DIRECTORY urdf config rviz launch worlds sdf sdf/meshes
 )
 
 install(PROGRAMS
-  oomwoo_gazebo/bump_recovery.py
+  oomwoo_gazebo_harmonic/bump_recovery.py
   DESTINATION lib/${PROJECT_NAME}
 )
 

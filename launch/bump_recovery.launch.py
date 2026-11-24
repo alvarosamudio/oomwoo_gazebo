@@ -7,7 +7,7 @@ from launch_ros.actions import Node
 def generate_launch_description():
     return LaunchDescription([
         Node(
-            package="oomwoo_gazebo",
+            package="oomwoo_gazebo_harmonic",
             executable="bump_recovery.py",
             name="bump_recovery",
             output="screen",

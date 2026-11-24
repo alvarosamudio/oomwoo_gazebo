@@ -8,7 +8,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    pkg = get_package_share_directory("oomwoo_gazebo")
+    pkg = get_package_share_directory("oomwoo_gazebo_harmonic")
 
     world_arg = DeclareLaunchArgument(
         "world", default_value=os.path.join(pkg, "worlds", "living_room.sdf"),

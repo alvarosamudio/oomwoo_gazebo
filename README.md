@@ -8,6 +8,11 @@ URDF model, Gazebo simulation worlds, and Nav2/SLAM configuration for the [OOMWO
 
 This is the self-hosted version of the `urdf-gazebo-sim` contribution by [@alvarosamudio](https://github.com/alvarosamudio), built against the [ROS2 Software Interfaces](https://github.com/makerspet/oomwoo/blob/main/docs/SOFTWARE_INTERFACES.md) contract.
 
+> **Package name:** the ROS2 package is `oomwoo_gazebo_harmonic`, not
+> `oomwoo_gazebo`, so it can live in the same colcon workspace as the official
+> [makerspet/oomwoo_gazebo](https://github.com/makerspet/oomwoo_gazebo) package
+> without a duplicate-package error.
+
 ---
 
 ## Table of Contents
@@ -34,20 +39,20 @@ This is the self-hosted version of the `urdf-gazebo-sim` contribution by [@alvar
 source /opt/ros/jazzy/setup.bash
 
 # Build
-colcon build --packages-select oomwoo_gazebo
+colcon build --packages-select oomwoo_gazebo_harmonic
 source install/setup.bash
 
 # Launch simulation (default: living_room.sdf)
-ros2 launch oomwoo_gazebo sim.launch.py
+ros2 launch oomwoo_gazebo_harmonic sim.launch.py
 
 # In another terminal, drive around
-ros2 launch oomwoo_gazebo teleop.launch.py
+ros2 launch oomwoo_gazebo_harmonic teleop.launch.py
 ```
 
 Use a different world:
 
 ```bash
-ros2 launch oomwoo_gazebo sim.launch.py world:=/path/to/kitchen.sdf
+ros2 launch oomwoo_gazebo_harmonic sim.launch.py world:=/path/to/kitchen.sdf
 ```
 
 ---
@@ -58,13 +63,13 @@ This repo contains two ROS2 packages:
 
 | Package | Type | Description |
 |---|---|---|
-| `oomwoo_gazebo` | `ament_cmake` | URDF, config, worlds, launch files, legacy bump_recovery |
+| `oomwoo_gazebo_harmonic` | `ament_cmake` | URDF, config, worlds, launch files, legacy bump_recovery |
 | `oomwoo_recovery_safety` | `ament_python` | Recovery state machine (by [@xbattlax](https://github.com/xbattlax)) |
 
-### oomwoo_gazebo layout
+### oomwoo_gazebo_harmonic layout
 
 ```
-oomwoo_gazebo/
+oomwoo_gazebo_harmonic/
 ├── urdf/                   # Robot description (xacro)
 │   ├── robot.urdf.xacro   # Main URDF — includes all macros
 │   ├── params.xacro       # Dimensions, masses, physical properties
@@ -92,7 +97,7 @@ oomwoo_gazebo/
 │   └── nav2.launch.py
 ├── rviz/
 │   └── oomwoo.rviz        # RViz preset with robot, laser, map, plans, TF
-├── oomwoo_gazebo/
+├── oomwoo_gazebo_harmonic/
 │   ├── __init__.py
 │   └── bump_recovery.py   # Deprecated — use oomwoo_recovery_safety
 ├── CMakeLists.txt
@@ -137,7 +142,7 @@ The [oomwoo_recovery_safety](oomwoo_recovery_safety/) package by [@xbattlax](htt
 - Unit-tested for guaranteed termination and safety responses
 
 ```bash
-colcon build --packages-select oomwoo_gazebo oomwoo_recovery_safety
+colcon build --packages-select oomwoo_gazebo_harmonic oomwoo_recovery_safety
 source install/setup.bash
 ros2 launch oomwoo_recovery_safety recovery_safety.launch.py
 ```
@@ -150,7 +155,7 @@ fresh source and publishes zero when everything is stale. With the mux running,
 start teleop with `topic:=cmd_vel_nav`:
 
 ```bash
-ros2 launch oomwoo_gazebo teleop.launch.py topic:=cmd_vel_nav
+ros2 launch oomwoo_gazebo_harmonic teleop.launch.py topic:=cmd_vel_nav
 ```
 
 If you also run `nav2.launch.py` (which includes its own mux), start the
@@ -165,14 +170,14 @@ ros2 launch oomwoo_recovery_safety recovery_safety.launch.py mux:=false
 A lightweight one-shot recovery node — backs up while rotating away from the collision, stops after 1.5 s. **Deprecated** in favor of `oomwoo_recovery_safety`.
 
 ```bash
-ros2 launch oomwoo_gazebo bumper_test.launch.py
-ros2 run oomwoo_gazebo bump_recovery.py
+ros2 launch oomwoo_gazebo_harmonic bumper_test.launch.py
+ros2 run oomwoo_gazebo_harmonic bump_recovery.py
 ```
 
 ### SLAM
 
 ```bash
-ros2 launch oomwoo_gazebo slam.launch.py
+ros2 launch oomwoo_gazebo_harmonic slam.launch.py
 ```
 
 Launches `async_slam_toolbox_node` with `use_sim_time` and configured slam_toolbox parameters.
@@ -180,7 +185,7 @@ Launches `async_slam_toolbox_node` with `use_sim_time` and configured slam_toolb
 ### Navigation
 
 ```bash
-ros2 launch oomwoo_gazebo nav2.launch.py map:=/path/to/your/map.yaml
+ros2 launch oomwoo_gazebo_harmonic nav2.launch.py map:=/path/to/your/map.yaml
 ```
 
 Launches Nav2 localization (map server + AMCL), the full navigation stack,
@@ -194,17 +199,17 @@ End-to-end flow (build a map first, then navigate on it):
 
 ```bash
 # Terminal 1 — simulation
-ros2 launch oomwoo_gazebo sim.launch.py
+ros2 launch oomwoo_gazebo_harmonic sim.launch.py
 
 # Terminal 2 — drive the robot around to build the map
-ros2 launch oomwoo_gazebo slam.launch.py
-ros2 launch oomwoo_gazebo teleop.launch.py
+ros2 launch oomwoo_gazebo_harmonic slam.launch.py
+ros2 launch oomwoo_gazebo_harmonic teleop.launch.py
 
 # Terminal 3 — save the map once it looks good
 ros2 service call /map_saver/save_map nav2_msgs/srv/SaveMap "{}"
 
 # Terminal 4 — navigate on the saved map (AMCL initial pose = map origin)
-ros2 launch oomwoo_gazebo nav2.launch.py map:=/path/to/saved/map.yaml
+ros2 launch oomwoo_gazebo_harmonic nav2.launch.py map:=/path/to/saved/map.yaml
 ```
 
 The Nav2 bringup includes:
@@ -252,7 +257,7 @@ the ROS-Gazebo bridge:
 ```bash
 docker pull makerspet/oomwoo:jazzy-dev
 docker run --rm -it \
-  -v "$PWD":/workspace/src/oomwoo_gazebo \
+  -v "$PWD":/workspace/src/oomwoo_gazebo_harmonic \
   makerspet/oomwoo:jazzy-dev bash
 ```
 
@@ -274,7 +279,7 @@ use Gazebo's server-only mode:
 export MESA_GL_VERSION_OVERRIDE=3.3
 export LIBGL_ALWAYS_SOFTWARE=1
 gz sim -s -r --headless-rendering \
-  install/oomwoo_gazebo/share/oomwoo_gazebo/worlds/living_room.sdf
+  install/oomwoo_gazebo_harmonic/share/oomwoo_gazebo_harmonic/worlds/living_room.sdf
 ```
 
 The `gz-sim-sensors-system` world plugin must remain enabled for GPU LiDAR;

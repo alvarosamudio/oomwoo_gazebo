@@ -8,7 +8,7 @@ from launch_ros.actions import Node
 
 
 def generate_launch_description():
-    pkg = get_package_share_directory("oomwoo_gazebo")
+    pkg = get_package_share_directory("oomwoo_gazebo_harmonic")
     nav2_bringup = get_package_share_directory("nav2_bringup")
     nav2_map_server = get_package_share_directory("nav2_map_server")
     nav2_params = os.path.join(pkg, "config", "navigation.yaml")

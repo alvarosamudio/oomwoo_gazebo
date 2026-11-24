@@ -1,14 +1,14 @@
 <?xml version="1.0"?>
 <?xml-model href="http://download.ros.org/schema/package_format3.xsd" schematypens="http://www.w3.org/2001/XMLSchema"?>
 <package format="3">
-  <name>oomwoo_gazebo</name>
+  <name>oomwoo_gazebo_harmonic</name>
   <version>0.1.0</version>
   <description>oomwoo open-source robot vacuum - URDF, Gazebo simulation &amp; bumper</description>
 
   <maintainer email="alvarosamudio@protonmail.com">alvarosamudio</maintainer>
   <license>Apache-2.0</license>
 
-  <url type="repository">https://github.com/makerspet/oomwoo</url>
+  <url type="repository">https://github.com/alvarosamudio/oomwoo_gazebo</url>
 
   <buildtool_depend>ament_cmake</buildtool_depend>
 
