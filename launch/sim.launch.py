@@ -19,6 +19,16 @@ def generate_launch_description():
         description="Launch RViz"
     )
 
+    spawn_args = [
+        DeclareLaunchArgument(n, default_value=v, description=d)
+        for n, v, d in (
+            ("x", "0.0", "Spawn x [m]"),
+            ("y", "0.0", "Spawn y [m]"),
+            ("z", "0.0", "Spawn z [m] (e.g. 0.1 for cliff_test.sdf)"),
+            ("yaw", "0.0", "Spawn yaw [rad]"),
+        )
+    ]
+
     world = LaunchConfiguration("world")
     rviz = LaunchConfiguration("rviz")
 
@@ -53,11 +63,23 @@ def generate_launch_description():
     spawn_entity = ExecuteProcess(
         cmd=[
             "bash", "-c",
-            "for i in $(seq 1 30); do "
-            "ros2 run ros_gz_sim create -name oomwoo -topic robot_description "
-            "-x 0 -y 0 -Y 0 && exit 0; "
-            "sleep 1; done; exit 1",
+            ["for i in $(seq 1 30); do "
+             "ros2 run ros_gz_sim create -name oomwoo -topic robot_description"
+             " -x ", LaunchConfiguration("x"),
+             " -y ", LaunchConfiguration("y"),
+             " -z ", LaunchConfiguration("z"),
+             " -Y ", LaunchConfiguration("yaw"),
+             " && exit 0; sleep 1; done; exit 1"],
         ],
+        output="screen",
+    )
+
+    # Publishes /oomwoo/io/cliff (UInt8 bitfield) from the 4 cliff sensors.
+    cliff_detector = Node(
+        package="oomwoo_gazebo_harmonic",
+        executable="cliff_detector.py",
+        name="cliff_detector",
+        parameters=[{"use_sim_time": True}],
         output="screen",
     )
 
@@ -71,9 +93,11 @@ def generate_launch_description():
     return LaunchDescription([
         world_arg,
         rviz_arg,
+        *spawn_args,
         gz_server,
         bridge,
         robot_state_pub,
         spawn_entity,
+        cliff_detector,
         rviz_node,
     ])

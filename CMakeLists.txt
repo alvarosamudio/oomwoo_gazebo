@@ -14,7 +14,13 @@ install(DIRECTORY urdf config rviz launch worlds sdf sdf/meshes
 
 install(PROGRAMS
   oomwoo_gazebo_harmonic/bump_recovery.py
+  oomwoo_gazebo_harmonic/cliff_detector.py
   DESTINATION lib/${PROJECT_NAME}
 )
+
+if(BUILD_TESTING)
+  find_package(ament_cmake_pytest REQUIRED)
+  ament_add_pytest_test(test_cliff_detector test/test_cliff_detector.py)
+endif()
 
 ament_package()

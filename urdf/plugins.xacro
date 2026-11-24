@@ -24,7 +24,86 @@
       <joint_name>wheel_left_joint</joint_name>
       <joint_name>wheel_right_joint</joint_name>
     </plugin>
+
+    <!-- Battery: published on /model/oomwoo/battery/main_battery/state
+         (gz.msgs.BatteryState), bridged to /battery_state. The model name
+         "oomwoo" comes from the spawn command in the launch files.
+         Voltage ~= full + span * (1 - charge/capacity) - R * I. -->
+    <plugin filename="gz-sim-linearbatteryplugin-system" name="gz::sim::systems::LinearBatteryPlugin">
+      <battery_name>main_battery</battery_name>
+      <voltage>${battery_v_nominal}</voltage>
+      <open_circuit_voltage_constant_coef>${battery_v_full}</open_circuit_voltage_constant_coef>
+      <open_circuit_voltage_linear_coef>${battery_v_span}</open_circuit_voltage_linear_coef>
+      <initial_charge>${battery_initial_ah}</initial_charge>
+      <capacity>${battery_capacity_ah}</capacity>
+      <resistance>${battery_resistance}</resistance>
+      <smooth_current_tau>2.0</smooth_current_tau>
+      <power_load>${battery_power_load}</power_load>
+      <start_draining>true</start_draining>
+      <fix_issue_225>true</fix_issue_225>
+    </plugin>
   </gazebo>
+
+  <gazebo reference="imu_link">
+    <sensor name="imu_sensor" type="imu">
+      <always_on>1</always_on>
+      <update_rate>${imu_update_rate}</update_rate>
+      <topic>imu</topic>
+      <gz_frame_id>imu_link</gz_frame_id>
+      <imu>
+        <angular_velocity>
+          <x><noise type="gaussian"><mean>0</mean><stddev>0.002</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>0.002</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>0.002</stddev></noise></z>
+        </angular_velocity>
+        <linear_acceleration>
+          <x><noise type="gaussian"><mean>0</mean><stddev>0.02</stddev></noise></x>
+          <y><noise type="gaussian"><mean>0</mean><stddev>0.02</stddev></noise></y>
+          <z><noise type="gaussian"><mean>0</mean><stddev>0.02</stddev></noise></z>
+        </linear_acceleration>
+      </imu>
+    </sensor>
+  </gazebo>
+
+  <!-- Cliff sensors: a 3-ray downward gpu_lidar each (a single-sample
+       gpu_lidar is unreliable). Floor is ~0.018 m below the sensor; a
+       reading beyond cliff_detector's threshold (or inf) means a drop. -->
+  <xacro:macro name="cliff_sensor_plugin" params="name">
+    <gazebo reference="cliff_${name}_link">
+      <sensor name="cliff_${name}_sensor" type="gpu_lidar">
+        <always_on>1</always_on>
+        <update_rate>${cliff_update_rate}</update_rate>
+        <topic>cliff/${name}</topic>
+        <gz_frame_id>cliff_${name}_link</gz_frame_id>
+        <ray>
+          <scan>
+            <horizontal>
+              <samples>3</samples>
+              <resolution>1</resolution>
+              <min_angle>-0.02</min_angle>
+              <max_angle>0.02</max_angle>
+            </horizontal>
+          </scan>
+          <range>
+            <min>${cliff_range_min}</min>
+            <max>${cliff_range_max}</max>
+            <resolution>0.001</resolution>
+          </range>
+          <noise>
+            <type>gaussian</type>
+            <mean>0.0</mean>
+            <stddev>0.002</stddev>
+          </noise>
+        </ray>
+        <visualize>false</visualize>
+      </sensor>
+    </gazebo>
+  </xacro:macro>
+
+  <xacro:cliff_sensor_plugin name="front_left"/>
+  <xacro:cliff_sensor_plugin name="front_right"/>
+  <xacro:cliff_sensor_plugin name="side_left"/>
+  <xacro:cliff_sensor_plugin name="side_right"/>
 
   <gazebo reference="base_scan">
     <sensor name="laser_scan_sensor" type="gpu_lidar">

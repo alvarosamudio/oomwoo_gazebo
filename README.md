@@ -21,6 +21,7 @@ This is the self-hosted version of the `urdf-gazebo-sim` contribution by [@alvar
 - [Packages](#packages)
 - [Features](#features)
   - [Simulation Worlds](#simulation-worlds)
+  - [Sensors](#sensors)
   - [Bumper & Recovery](#bumper--recovery)
   - [SLAM](#slam)
   - [Navigation](#navigation)
@@ -84,6 +85,7 @@ oomwoo_gazebo_harmonic/
 │   └── map.pgm            # Nav2 placeholder map image
 ├── worlds/                 # Gazebo simulation worlds
 │   ├── empty.sdf          # Bare ground plane
+│   ├── cliff_test.sdf     # 10 cm platform for cliff-sensor testing
 │   ├── living_room.sdf    # Sofa, table, walls
 │   ├── kitchen.sdf        # Cabinets, island, appliances
 │   ├── multi_room.sdf     # Connected rooms with doorways
@@ -99,7 +101,10 @@ oomwoo_gazebo_harmonic/
 │   └── oomwoo.rviz        # RViz preset with robot, laser, map, plans, TF
 ├── oomwoo_gazebo_harmonic/
 │   ├── __init__.py
+│   ├── cliff_detector.py  # Cliff scans -> /oomwoo/io/cliff bitfield
 │   └── bump_recovery.py   # Deprecated — use oomwoo_recovery_safety
+├── test/
+│   └── test_cliff_detector.py
 ├── CMakeLists.txt
 └── package.xml
 ```
@@ -113,14 +118,38 @@ oomwoo_gazebo_harmonic/
 | World | Description |
 |---|---|
 | `empty.sdf` | Bare ground plane — ideal for bumper testing |
+| `cliff_test.sdf` | 2 × 2 m platform, 10 cm high — spawn with `z:=0.1` to test cliff sensors |
 | `living_room.sdf` | Sofa, table, plant, obstacle box, walls |
 | `kitchen.sdf` | Central island, dining table, chairs |
 | `multi_room.sdf` | Two connected rooms with dividing wall |
 | `narrow_passage.sdf` | Corridor with bottleneck obstacle |
 
 All worlds use DART physics (FCL collision detection), the Gazebo Sensors
-system plugin for `gpu_lidar`, and contact plugins. The GPU LiDAR can run with
+system plugin for `gpu_lidar`, and the contact and IMU plugins. The GPU LiDAR can run with
 Mesa software rendering in headless Docker environments.
+
+### Sensors
+
+| ROS2 topic | Type | Source | Notes |
+|---|---|---|---|
+| `/scan` | `sensor_msgs/LaserScan` | 360° `gpu_lidar`, 10 Hz | 0.12–12 m |
+| `/bumper_left`, `/bumper_right` | `ros_gz_interfaces/Contacts` | contact sensors, 50 Hz | raw Gazebo contacts |
+| `/cliff/{front_left,front_right,side_left,side_right}` | `sensor_msgs/LaserScan` | downward 3-ray `gpu_lidar`, 50 Hz | floor ≈ 0.018 m away; `inf` = drop |
+| `/oomwoo/io/cliff` | `std_msgs/UInt8` | `cliff_detector.py` | bitfield: bit0 FL, bit1 FR, bit2 SL, bit3 SR; a stale sensor reads as cliff |
+| `/imu` | `sensor_msgs/Imu` | IMU at `imu_link`, 100 Hz | gaussian noise on gyro/accel |
+| `/battery_state` | `sensor_msgs/BatteryState` | `LinearBatteryPlugin` | 4S Li-ion, 16.8 V full, 5.2 Ah, constant 30 W load |
+
+`/oomwoo/io/cliff` follows the hardware-bridge topic in the OOMWOO
+[Software Interfaces](https://github.com/makerspet/oomwoo/blob/main/docs/SOFTWARE_INTERFACES.md#hardware-bridge-draft),
+so safety nodes can use the same topic in simulation and on the robot. To try it:
+
+```bash
+ros2 launch oomwoo_gazebo_harmonic sim.launch.py \
+  world:=$(ros2 pkg prefix oomwoo_gazebo_harmonic)/share/oomwoo_gazebo_harmonic/worlds/cliff_test.sdf z:=0.1
+ros2 topic echo /oomwoo/io/cliff   # 0 on the platform, non-zero at an edge
+```
+
+`sim.launch.py` also accepts `x`, `y`, `z` and `yaw` for the spawn pose.
 
 ### Bumper & Recovery
 
@@ -238,8 +267,11 @@ The Nav2 bringup includes:
 | wheel_diameter | 0.065 m | Drive wheels diameter |
 | wheel_base | 0.28 m | Distance between drive wheels |
 | lidar_z_offset | 0.075 m | LiDAR height offset |
-| bumper_width | 0.12 m | Each bumper pad width |
-| bumper_height | 0.025 m | Bumper pad height |
+| bumper_width | 0.10 m | Each bumper pad width |
+| bumper_height | 0.03 m | Bumper pad height |
+| cliff_radius | 0.14 m | Cliff sensors circle (at ±20° and ±60°) |
+| imu_update_rate | 100 Hz | IMU rate |
+| battery_capacity_ah | 5.2 Ah | 14.4 V nominal 4S2P pack (BOM) |
 
 ---
 

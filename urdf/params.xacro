@@ -31,4 +31,29 @@
   <xacro:property name="bumper_mass" value="0.020"/>
   <xacro:property name="motor_stall_torque" value="0.5"/>
   <xacro:property name="max_linear_acceleration" value="1.0"/>
+
+  <!-- Cliff sensors (BOM: 4x downward IR). Mounted on the underside of
+       base_link, on a circle of cliff_radius, looking straight down. -->
+  <xacro:property name="cliff_radius" value="0.140"/>
+  <xacro:property name="cliff_front_angle" value="0.35"/>  <!-- ~20 deg -->
+  <xacro:property name="cliff_side_angle" value="1.05"/>   <!-- ~60 deg -->
+  <xacro:property name="cliff_z" value="-0.002"/>
+  <xacro:property name="cliff_range_min" value="0.005"/>
+  <xacro:property name="cliff_range_max" value="0.150"/>
+  <xacro:property name="cliff_update_rate" value="50"/>
+  <xacro:property name="sensor_mass" value="0.002"/>
+  <xacro:property name="sensor_size" value="0.008"/>
+
+  <!-- IMU at the base centre -->
+  <xacro:property name="imu_z" value="0.010"/>
+  <xacro:property name="imu_update_rate" value="100"/>
+
+  <!-- Battery (BOM: 14.4 V 4S2P Li-ion, ~5.2 Ah / 75 Wh) -->
+  <xacro:property name="battery_v_full" value="16.8"/>
+  <xacro:property name="battery_v_nominal" value="14.4"/>
+  <xacro:property name="battery_v_span" value="-4.0"/>     <!-- 16.8 V full -> 12.8 V empty -->
+  <xacro:property name="battery_capacity_ah" value="5.2"/>
+  <xacro:property name="battery_initial_ah" value="5.2"/>
+  <xacro:property name="battery_resistance" value="0.07"/>
+  <xacro:property name="battery_power_load" value="30.0"/>  <!-- W, ~2.5 h runtime -->
 </robot>

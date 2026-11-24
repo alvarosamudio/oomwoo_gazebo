@@ -189,6 +189,40 @@
     <xacro:solid_box_inertia m="${bumper_mass/2}" x="${bumper_depth}" y="${bumper_width}" z="${bumper_height}"/>
   </link>
 
+  <!-- Cliff sensor links: x axis rotated to point at the floor (pitch +90 deg) -->
+  <xacro:macro name="cliff_sensor" params="name angle">
+    <joint name="cliff_${name}_joint" type="fixed">
+      <parent link="base_link"/>
+      <child link="cliff_${name}_link"/>
+      <origin xyz="${cliff_radius*cos(angle)} ${cliff_radius*sin(angle)} ${cliff_z}"
+              rpy="0 ${pi/2} 0"/>
+    </joint>
+    <link name="cliff_${name}_link">
+      <visual>
+        <geometry>
+          <box size="${sensor_size} ${sensor_size} ${sensor_size/2}"/>
+        </geometry>
+        <material name="black"/>
+      </visual>
+      <xacro:solid_box_inertia m="${sensor_mass}" x="${sensor_size}" y="${sensor_size}" z="${sensor_size/2}"/>
+    </link>
+  </xacro:macro>
+
+  <xacro:cliff_sensor name="front_left" angle="${cliff_front_angle}"/>
+  <xacro:cliff_sensor name="front_right" angle="${-cliff_front_angle}"/>
+  <xacro:cliff_sensor name="side_left" angle="${cliff_side_angle}"/>
+  <xacro:cliff_sensor name="side_right" angle="${-cliff_side_angle}"/>
+
+  <joint name="imu_joint" type="fixed">
+    <parent link="base_link"/>
+    <child link="imu_link"/>
+    <origin xyz="0 0 ${imu_z}" rpy="0 0 0"/>
+  </joint>
+
+  <link name="imu_link">
+    <xacro:solid_box_inertia m="${sensor_mass}" x="${sensor_size}" y="${sensor_size}" z="${sensor_size/4}"/>
+  </link>
+
   <gazebo reference="bumper_left_link">
     <self_collide>false</self_collide>
   </gazebo>
